@@ -1,9 +1,6 @@
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-import json
-import sys
-
-
+import json, sys, os
 
 
 def load_cookies(context, cookies_file) -> None:
@@ -12,12 +9,10 @@ def load_cookies(context, cookies_file) -> None:
         cookies = json.load(f)
     context.add_cookies(cookies)
 
-# def get_file(url: str) -> None
-# """Downloads file from *url*
 
 def get_page(url: str) -> str:
     """
-    Downloads the source HTML for specified web page
+    Downloads and returns the source HTML for specified web page
     i.e, for URL extracting
     """        
     page.goto(url)
@@ -57,20 +52,17 @@ def get_sorted_links(url: str) -> list[list]:
     files = []
 
     page = get_page(url)
-    with open(page) as file:
-        page = file.read()
-
     links = get_links(page)
+    print(f"Found {len(links)} links")
 
     for link in links:
         if is_folder(link):
-            print("found folder:", link)
             folders.append(domain + link)
         else:
-            print("found file:", link)
             files.append(link)
 
     return files, folders
+
 
 def set_domain(url: str) -> None:
     """
@@ -87,7 +79,21 @@ def set_domain(url: str) -> None:
     domain = url[0:domain_end_index]
     print("Extracted domain: ", domain)
 
+    
+def get_download(file_link):
+    with page.expect_download() as download_info:
+        try:
+            page.goto(file_link)
+        except:
+            pass # playwright throws an error when you try to download a pdf... intentionally... every time...
+    download = download_info.value
+    print(f"Downloading file: \t{download.suggested_filename}")
+    # print(f"Downloading file: \t{download.suggested_filename} ({download.url})")
+    download.save_as("./Downloads/" + download.suggested_filename)
 
+
+
+            
 if __name__ == "__main__":
 
     if len(sys.argv) < 2:
@@ -100,20 +106,29 @@ if __name__ == "__main__":
     folders = [url]
     files = []
 
-    p = sync_playwright()
+    with sync_playwright() as p:
 
-    global browser, context, page
-    browser = p.firefox.launch(headless=True)
-    context = browser.new_context()
-    page = context.new_page()
-    load_cookies(context, './cookies.json')
-    
-    for folder in folders:
-           results = get_sorted_links(folder)
-           files += results[0]
-           folders += results[1]
-           folders.pop(0)
-    print(files)
-    p.close
+        global context, page
+        browser = p.firefox.launch(headless=True)
+        context = browser.new_context()
+        # context.on("download", get_download)
+        page = context.new_page()
+        load_cookies(context, './cookies.json')
 
-# https://illinoiswesleyan.instructure.com/courses/3940/files
+        for folder in folders:
+            print(f"Entering folder: {folder}")
+            results = get_sorted_links(folder)
+            print(f"{len(results[0])} new files and {len(results[1])} new folders")
+            files += results[0]
+            folders += results[1]
+            folders.pop(0)
+
+        print(f"Total files found: {len(files)}")
+
+        os.makedirs("./downloads", exist_ok=True)
+            
+        for file_link in files:
+            get_download(file_link)
+
+        page.close()
+        browser.close()
