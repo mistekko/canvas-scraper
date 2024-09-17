@@ -67,7 +67,7 @@ def get_sorted_links(url: str) -> list[list]:
 def set_domain(url: str) -> None:
     """
     Extracts domain from given url and assigns global variable domain to
-    it. Returns nothing.
+    it. 
 
     This is necessary because the sub-folder links gathered by this
     scraper are absolute paths, not complete URLs. To complete the
@@ -78,6 +78,19 @@ def set_domain(url: str) -> None:
     domain_end_index = url.index("courses")-1
     domain = url[0:domain_end_index]
     print("Extracted domain: ", domain)
+
+    
+def get_course_id(url: str) -> None:
+    """
+    Extracts course ID from given URL and assigns global variable
+    course_id to it. 
+
+    Allows for easier conversion of e.g. file IDs to full urls
+    """
+    global course_id
+    course_id_index = url.index("courses") + 8
+    course_id = url[course_id_index:course_id_index+4]
+    print(course_id)
 
     
 def get_download(file_link):
@@ -91,9 +104,7 @@ def get_download(file_link):
     # print(f"Downloading file: \t{download.suggested_filename} ({download.url})")
     download.save_as("./Downloads/" + download.suggested_filename)
 
-
-
-            
+         
 if __name__ == "__main__":
 
     if len(sys.argv) < 2:
@@ -111,7 +122,6 @@ if __name__ == "__main__":
         global context, page
         browser = p.firefox.launch(headless=True)
         context = browser.new_context()
-        # context.on("download", get_download)
         page = context.new_page()
         load_cookies(context, './cookies.json')
 
@@ -132,3 +142,8 @@ if __name__ == "__main__":
 
         page.close()
         browser.close()
+
+
+
+
+        
